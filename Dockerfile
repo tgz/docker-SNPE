@@ -14,14 +14,14 @@ RUN set -xe \
 		\
  		&& apt-get update \
  		&& apt-get -y --no-install-recommends install \
-			libprotobuf-dev protobuf-compiler \ 
+			libprotobuf-dev protobuf-compiler \
 	 		libleveldb-dev libsnappy-dev libopencv-dev libhdf5-serial-dev libboost-all-dev libatlas-base-dev \
 	 		cmake \
 	 		libgflags-dev libgoogle-glog-dev liblmdb-dev \
  		\
     && apt-get install -y --no-install-recommends \
       tcl tk \
-    && apt-get install -y gcc g++ wget zip git
+    && apt-get install -y gcc g++ wget zip git android-tools-adb android-tools-fastboot
 
 #python
 RUN set -ex \
@@ -84,14 +84,14 @@ RUN set -ex; \
   rm -f get-pip.py
 
 #Done with python
-    
+
 RUN set -ex \
 	&& apt-get -y --no-install-recommends install python-numpy gfortran \
 	&& pip install cython \
 	&& pip install numpy==1.14.5 \
 		sphinx==1.2.2 \
 		scipy==1.1.0 \
-		matplotlib==2.2.2 \
+		matplotlib==2.0.0 \
 		scikit-image \
 	protobuf==2.5.0 \
 	pyyaml==3.10 \
@@ -133,8 +133,9 @@ RUN set -ex \
   \
   && apt-get purge -y --auto-remove git wget zip \
   && rm -rf /var/lib/apt/lists/*  \
-  && cd /root
-  
+  && cd /root \
+  && echo 'SUBSYSTEM=="usb", ATTRS{idVendor}=="05c6", MODE="0660", GROUP="plugdev"' >> /etc/udev/rules.d
+
   ENV PYTHONPATH="${SNPE_ROOT}/lib/python:${SNPE_ROOT}/models/lenet/scripts:${SNPE_ROOT}/models/alexnet/scripts:${PYTHONPATH}" \
       CAFFE_HOME="/root/caffe" \
       PATH="/root/caffe/build/install/bin:/root/caffe/distribute/bin:${PATH}" \
