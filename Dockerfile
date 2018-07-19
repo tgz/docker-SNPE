@@ -4,25 +4,24 @@ ENV DEBIAN_FRONTEND=noninteractive \
     GPG_KEY=C01E1CAD5EA2C4F0B8E3571504C367C218ADD4FF \
     PYTHON_VERSION=2.7.15 \
     PYTHON_PIP_VERSION=10.0.1 \
-    CAFFE_DIR=/root/caffe SNPE_ROOT=/snpe
+    CAFFE_DIR=/root/caffe SNPE_ROOT=/root/snpe
 
 WORKDIR /root
-VOLUME "/snpe"
+VOLUME "/root/snpe"
 SHELL ["/bin/bash", "-c"]
 
 RUN set -xe \
 		\
  		&& apt-get update \
- 		&& apt-get -y install \
+ 		&& apt-get -y --no-install-recommends install \
 			libprotobuf-dev protobuf-compiler \ 
-	 		wget zip git\
 	 		libleveldb-dev libsnappy-dev libopencv-dev libhdf5-serial-dev libboost-all-dev libatlas-base-dev \
 	 		cmake \
 	 		libgflags-dev libgoogle-glog-dev liblmdb-dev \
-	 		python-software-properties software-properties-common \
  		\
     && apt-get install -y --no-install-recommends \
-      tcl tk 
+      tcl tk \
+    && apt-get install -y gcc g++ wget zip git
 
 #python
 RUN set -ex \
@@ -33,8 +32,8 @@ RUN set -ex \
   ' \
   && apt-get install -y $buildDeps openssl libssl-dev --no-install-recommends \
   \
-  && wget -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" \
-  && wget -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
+  && wget --no-check-certificate -O python.tar.xz "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz" \
+  && wget --no-check-certificate -O python.tar.xz.asc "https://www.python.org/ftp/python/${PYTHON_VERSION%%[a-z]*}/Python-$PYTHON_VERSION.tar.xz.asc" \
   && export GNUPGHOME="$(mktemp -d)" \
   && gpg --keyserver ha.pool.sks-keyservers.net --recv-keys "$GPG_KEY" \
   && gpg --batch --verify python.tar.xz.asc python.tar.xz \
@@ -67,7 +66,7 @@ RUN set -ex \
 
 RUN set -ex; \
   \
-  wget -O get-pip.py 'https://bootstrap.pypa.io/get-pip.py'; \
+  wget --no-check-certificate -O get-pip.py 'https://bootstrap.pypa.io/get-pip.py'; \
   \
   python get-pip.py \
     --disable-pip-version-check \
@@ -87,7 +86,7 @@ RUN set -ex; \
 #Done with python
     
 RUN set -ex \
-	&& apt-get -y install python-numpy gfortran \
+	&& apt-get -y --no-install-recommends install python-numpy gfortran \
 	&& pip install cython \
 	&& pip install numpy==1.14.5 \
 		sphinx==1.2.2 \
@@ -96,20 +95,18 @@ RUN set -ex \
 		scikit-image \
 	protobuf==2.5.0 \
 	pyyaml==3.10 \
-	&& rm -rf /var/lib/apt/lists/*	\
-  #basic env
   \
   # prepare caffe start
   && cd /root \
-  && wget https://github.com/google/glog/archive/v0.3.3.tar.gz \
-	  && tar zxvf v0.3.3.tar.gz \
+  && wget --no-check-certificate https://github.com/google/glog/archive/v0.3.3.tar.gz \
+	  && tar zxvf v0.3.3.tar.gz && rm -f v0.3.3.tar.gz\
 	  && cd glog-0.3.3 \
 	  && ./configure \
 	  && make && make install \
 	  \
   && cd /root \
-  && wget https://github.com/schuhschuh/gflags/archive/master.zip \
-	  && unzip master.zip \
+  && wget --no-check-certificate https://github.com/schuhschuh/gflags/archive/master.zip \
+	  && unzip master.zip && rm -f master.zip \
 	  && cd gflags-master \
 	  && mkdir build \
  	&& cd build \
@@ -134,6 +131,15 @@ RUN set -ex \
   && make pycaffe \
   # end caffe build
   \
-  && cd /snpe
+  && apt-get purge -y --auto-remove git wget zip \
+  && rm -rf /var/lib/apt/lists/*  \
+  && cd /root
+  
+  ENV PYTHONPATH="${SNPE_ROOT}/lib/python:${SNPE_ROOT}/models/lenet/scripts:${SNPE_ROOT}/models/alexnet/scripts:${PYTHONPATH}" \
+      CAFFE_HOME="/root/caffe" \
+      PATH="/root/caffe/build/install/bin:/root/caffe/distribute/bin:${PATH}" \
+      LD_LIBRARY_PATH="${SNPE_ROOT}/lib/x86_64-linux-clang:/root/caffe/build/install/lib:/root/caffe/distribute/lib:${LD_LIBRARY_PATH}"
+  ENV PYTHONPATH="/root/caffe/build/install/python:/root/caffe/distribute/python:${PYTHONPATH}" \
+      PATH="${SNPE_ROOT}/bin/x86_64-linux-clang:${PATH}"
 
 CMD ["/bin/bash"]
